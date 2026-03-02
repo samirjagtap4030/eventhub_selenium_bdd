@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test';
 
-const BASE_URL      = 'https://eventhub.rahulshettyacademy.com';
+const BASE_URL      = 'http://localhost:3000';
 
 // ── Credentials ────────────────────────────────────────────────────────────────
 // Change these to match a registered account in your local sandbox
 const USER_EMAIL    = 'rahulshetty1@gmail.com';
-const USER_PASSWORD = '123456';
+const USER_PASSWORD = 'Magiclife1!';
 
 const SIX_EVENTS_RESPONSE = {
   data: [
@@ -29,12 +29,12 @@ const FOUR_EVENTS_RESPONSE = {
   pagination: { page: 1, totalPages: 1, total: 4, limit: 12 },
 };
 
-async function loginAndGoToEvents(page: Page) {
+async function loginAndGoToEvents(page) {
   await page.goto(`${BASE_URL}/login`);
   await page.getByLabel('Email').fill(USER_EMAIL);
   await page.getByLabel('Password').fill(USER_PASSWORD);
   await page.locator('#login-btn').click();
-  await expect(page).not.toHaveURL(/\/login/);
+  await expect(page.getByRole('link', { name: 'Browse Events →' })).toBeVisible();
   await page.goto(`${BASE_URL}/events`);
 }
 

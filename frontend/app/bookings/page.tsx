@@ -1,5 +1,5 @@
 'use client';
-import { Suspense } from 'react';
+import { Suspense, useState } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import BookingCard, { BookingCardSkeleton } from '@/components/bookings/BookingCard';
@@ -8,12 +8,14 @@ import Pagination  from '@/components/ui/Pagination';
 import Spinner     from '@/components/ui/Spinner';
 import Button      from '@/components/ui/Button';
 import { useBookings } from '@/lib/hooks/useBookings';
+import { bookingsApi } from '@/lib/api/bookings';
 
 
 function BookingsContent() {
   const router      = useRouter();
   const pathname    = usePathname();
   const searchParams = useSearchParams();
+  const [clearing, setClearing] = useState(false);
 
   const page = Number(searchParams.get('page') || 1);
 
@@ -21,6 +23,17 @@ function BookingsContent() {
     page,
     limit: 10,
   });
+
+  const handleClearAll = async () => {
+    if (!confirm('Clear all your bookings? This cannot be undone.')) return;
+    setClearing(true);
+    try {
+      await bookingsApi.clearAll();
+      refetch();
+    } finally {
+      setClearing(false);
+    }
+  };
 
   const bookings   = data?.data       ?? [];
   const pagination = data?.pagination;
@@ -33,6 +46,23 @@ function BookingsContent() {
 
   return (
     <>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">My Bookings</h1>
+          <p className="text-gray-500 mt-1">View and manage all your ticket bookings</p>
+        </div>
+        <div className="flex flex-col items-end gap-1 pt-1">
+          <button
+            onClick={handleClearAll}
+            disabled={clearing}
+            className="text-sm text-red-500 hover:text-red-700 underline underline-offset-2 disabled:opacity-50"
+          >
+            {clearing ? 'Clearing…' : 'Clear all bookings'}
+          </button>
+          <p className="text-xs text-gray-400">Do this often for clean test data.</p>
+        </div>
+      </div>
+
       {isLoading && (
         <div className="space-y-4">
           {Array.from({ length: 5 }).map((_, i) => <BookingCardSkeleton key={i} />)}
@@ -82,10 +112,6 @@ function BookingsContent() {
 export default function BookingsPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">My Bookings</h1>
-        <p className="text-gray-500 mt-1">View and manage all your ticket bookings</p>
-      </div>
       <Suspense fallback={<div className="flex justify-center py-12"><Spinner size="lg" /></div>}>
         <BookingsContent />
       </Suspense>

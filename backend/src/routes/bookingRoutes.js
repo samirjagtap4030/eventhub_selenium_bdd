@@ -317,6 +317,9 @@ router.get('/:id', bookingController.getBookingById);
  */
 router.post('/', validateCreateBooking, bookingController.createBooking);
 
+// ─── DELETE /api/bookings (clear all for current user) ───────────────────────
+router.delete('/', bookingController.clearAllBookings);
+
 // ─── DELETE /api/bookings/:id ─────────────────────────────────────────────────
 
 /**

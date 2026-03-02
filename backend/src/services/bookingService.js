@@ -66,30 +66,40 @@ const bookingService = {
   },
 
   async createBooking(data, userId) {
-    // FIFO: prune oldest booking if at limit
+    // FIFO: prune oldest booking if at limit, preferring a different event
     const count = await bookingRepository.countUserBookings(userId);
+    let sameEventFallback = false;
     if (count >= MAX_USER_BOOKINGS) {
-      const oldest = await bookingRepository.findOldestUserBooking(userId);
-      if (oldest) await bookingRepository.delete(oldest.id);
+      const oldest = (await bookingRepository.findOldestUserBookingExcludingEvent(userId, data.eventId))
+                  ?? (await bookingRepository.findOldestUserBooking(userId));
+      if (oldest) {
+        sameEventFallback = oldest.eventId === Number(data.eventId);
+        await bookingRepository.delete(oldest.id);
+      }
     }
 
     // Verify event exists (static or owned by user)
     const event = await eventRepository.findById(data.eventId, userId);
     if (!event) throw new NotFoundError(`Event with id ${data.eventId} not found`);
 
-    // Seat availability check using per-user computed count
+    // Seat availability check using per-user computed count against DB availableSeats
     const booked = await bookingRepository.getBookedQuantitiesForEvents(userId, [data.eventId]);
-    const personalAvailable = Math.max(0, event.totalSeats - (booked[data.eventId] || 0));
+    const personalAvailable = Math.max(0, event.availableSeats - (booked[data.eventId] || 0));
     if (personalAvailable < data.quantity) {
       throw new InsufficientSeatsError(
         `Only ${personalAvailable} seat(s) available, but ${data.quantity} requested`,
       );
     }
 
+    // In the same-event fallback, permanently burn a seat so the count still drops
+    if (sameEventFallback) {
+      await eventRepository.decrementSeats(data.eventId, data.quantity);
+    }
+
     const totalPrice = parseFloat(event.price) * data.quantity;
     const bookingRef = await generateUniqueRef(event.title);
 
-    // Create booking — no seat decrement on the event table (computed dynamically per user)
+    // Create booking
     const booking = await prisma.booking.create({
       data: {
         eventId:       data.eventId,
@@ -106,6 +116,11 @@ const bookingService = {
     });
 
     return booking;
+  },
+
+  async clearAllBookings(userId) {
+    const result = await bookingRepository.deleteAllForUser(userId);
+    return { deleted: result.count };
   },
 
   async cancelBooking(id, userId) {

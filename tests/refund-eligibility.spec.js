@@ -1,16 +1,16 @@
 import { test, expect } from '@playwright/test';
 
-const BASE_URL   = 'https://eventhub.rahulshettyacademy.com';
+const BASE_URL   = 'http://localhost:3000';
 
 // Change these to match a registered account in your local sandbox
-const GMAIL_USER = { email: 'rahulshetty1@gmail.com', password: '123456' };
+const GMAIL_USER = { email: 'rahulshetty1@gmail.com', password: 'Magiclife1!' };
 
-async function loginAndGoToBooking(page: any) {
+async function loginAndGoToBooking(page) {
   await page.goto(`${BASE_URL}/login`);
   await page.getByLabel('Email').fill(GMAIL_USER.email);
   await page.getByPlaceholder('••••••').fill(GMAIL_USER.password);
   await page.locator('#login-btn').click();
-  await expect(page).not.toHaveURL(/\/login/);
+  await expect(page.getByRole('link', { name: 'Browse Events →' })).toBeVisible();
 }
 
 // ── Test 1: 1 ticket → eligible ───────────────────────────────────────────────
@@ -29,9 +29,9 @@ test('refund eligible for single ticket booking', async ({ page }) => {
 
   // Navigate to booking detail
   await page.getByRole('link', { name: 'View My Bookings' }).click();
-  await expect(page).toHaveURL('/bookings');
+  await expect(page).toHaveURL(`${BASE_URL}/bookings`);
   await page.getByRole('link', { name: 'View Details' }).first().click();
-  await expect(page).toHaveURL(/\/bookings\/\d+/);
+  await expect(page.getByText('Booking Information')).toBeVisible();
 
   // Validate booking ref first letter matches event name first letter
   const bookingRef = await page.locator('span.font-mono.font-bold').innerText();
@@ -73,9 +73,9 @@ test('refund not eligible for group ticket booking', async ({ page }) => {
 
   // Navigate to booking detail
   await page.getByRole('link', { name: 'View My Bookings' }).click();
-  await expect(page).toHaveURL('/bookings');
+  await expect(page).toHaveURL(`${BASE_URL}/bookings`);
   await page.getByRole('link', { name: 'View Details' }).first().click();
-  await expect(page).toHaveURL(/\/bookings\/\d+/);
+  await expect(page.getByText('Booking Information')).toBeVisible();
 
   // Validate booking ref first letter matches event name first letter
   const bookingRef = await page.locator('span.font-mono.font-bold').innerText();

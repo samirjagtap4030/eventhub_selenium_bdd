@@ -57,6 +57,10 @@ const bookingRepository = {
     return prisma.booking.delete({ where: { id: Number(id) } });
   },
 
+  async deleteAllForUser(userId) {
+    return prisma.booking.deleteMany({ where: { userId } });
+  },
+
   /** Count all bookings for a user */
   async countUserBookings(userId) {
     return prisma.booking.count({ where: { userId } });
@@ -66,6 +70,15 @@ const bookingRepository = {
   async findOldestUserBooking(userId) {
     return prisma.booking.findFirst({
       where:   { userId },
+      orderBy: { createdAt: 'asc' },
+      include: { event: true },
+    });
+  },
+
+  /** Find the oldest booking for a user, excluding a specific event */
+  async findOldestUserBookingExcludingEvent(userId, eventId) {
+    return prisma.booking.findFirst({
+      where:   { userId, eventId: { not: Number(eventId) } },
       orderBy: { createdAt: 'asc' },
       include: { event: true },
     });

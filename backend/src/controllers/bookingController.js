@@ -37,6 +37,15 @@ const bookingController = {
     }
   },
 
+  async clearAllBookings(req, res, next) {
+    try {
+      const result = await bookingService.clearAllBookings(req.user.userId);
+      res.status(200).json({ success: true, message: `${result.deleted} booking(s) cleared` });
+    } catch (err) {
+      next(err);
+    }
+  },
+
   async cancelBooking(req, res, next) {
     try {
       await bookingService.cancelBooking(req.params.id, req.user.userId);

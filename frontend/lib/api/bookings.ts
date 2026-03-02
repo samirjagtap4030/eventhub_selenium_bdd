@@ -21,4 +21,7 @@ export const bookingsApi = {
 
   cancel: (id: number) =>
     apiClient.patch<ApiResponse<Booking>>(`/bookings/${id}/cancel`, {}),
+
+  clearAll: () =>
+    apiClient.delete<ApiResponse<null>>('/bookings'),
 };
