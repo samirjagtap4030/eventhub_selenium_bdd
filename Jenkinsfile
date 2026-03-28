@@ -32,6 +32,9 @@ pipeline {
 
         // ----------------------------------------------------------
         // Stage 1 — Run all 4 parts simultaneously
+        // failFast: false ensures all parts run even if one fails.
+        // catchError in each step converts FAILURE→UNSTABLE so the
+        // Publish stage is not skipped when scenarios fail.
         // ----------------------------------------------------------
         stage('Run Tests — Parallel') {
             parallel {
@@ -42,16 +45,20 @@ pipeline {
                     steps {
                         checkout scm
                         dir('selenium-tests') {
-                            bat "mvn test -Dsurefire.suiteXmlFiles=testng-bdd.xml -Dcucumber.filter.tags=@part1 -Dbrowser=${env.BROWSER} --no-transfer-progress"
+                            catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                                bat "mvn test -Dsurefire.suiteXmlFiles=testng-bdd.xml -Dcucumber.filter.tags=@part1 -Dbrowser=${env.BROWSER} --no-transfer-progress"
+                            }
                         }
                     }
                     post {
                         always {
                             dir('selenium-tests') {
+                                // Archive failure screenshots
                                 archiveArtifacts(
                                     artifacts: 'target/screenshots/**/*.png',
                                     allowEmptyArchive: true
                                 )
+                                // Stash Cucumber HTML + JSON for the publish stage
                                 stash(
                                     name: 'cucumber-part1',
                                     includes: 'target/cucumber-reports/**',
@@ -68,7 +75,9 @@ pipeline {
                     steps {
                         checkout scm
                         dir('selenium-tests') {
-                            bat "mvn test -Dsurefire.suiteXmlFiles=testng-bdd.xml -Dcucumber.filter.tags=@part2 -Dbrowser=${env.BROWSER} --no-transfer-progress"
+                            catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                                bat "mvn test -Dsurefire.suiteXmlFiles=testng-bdd.xml -Dcucumber.filter.tags=@part2 -Dbrowser=${env.BROWSER} --no-transfer-progress"
+                            }
                         }
                     }
                     post {
@@ -94,7 +103,9 @@ pipeline {
                     steps {
                         checkout scm
                         dir('selenium-tests') {
-                            bat "mvn test -Dsurefire.suiteXmlFiles=testng-bdd.xml -Dcucumber.filter.tags=@part3 -Dbrowser=${env.BROWSER} --no-transfer-progress"
+                            catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                                bat "mvn test -Dsurefire.suiteXmlFiles=testng-bdd.xml -Dcucumber.filter.tags=@part3 -Dbrowser=${env.BROWSER} --no-transfer-progress"
+                            }
                         }
                     }
                     post {
@@ -120,7 +131,9 @@ pipeline {
                     steps {
                         checkout scm
                         dir('selenium-tests') {
-                            bat "mvn test -Dsurefire.suiteXmlFiles=testng-bdd.xml -Dcucumber.filter.tags=@part4 -Dbrowser=${env.BROWSER} --no-transfer-progress"
+                            catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                                bat "mvn test -Dsurefire.suiteXmlFiles=testng-bdd.xml -Dcucumber.filter.tags=@part4 -Dbrowser=${env.BROWSER} --no-transfer-progress"
+                            }
                         }
                     }
                     post {
@@ -144,15 +157,16 @@ pipeline {
         } // end stage Run Tests — Parallel
 
         // ----------------------------------------------------------
-        // Stage 2 — Collect results and archive the Cucumber reports
+        // Stage 2 — Collect reports from all 4 workspaces and archive
+        // This stage runs even when scenarios fail (UNSTABLE state).
         // ----------------------------------------------------------
         stage('Publish Cucumber Report') {
             agent any
 
             steps {
-                // Unstash reports from all 4 parallel workspaces.
-                // Each lands at selenium-tests/target/cucumber-reports/;
-                // the last one wins, so we archive after every unstash.
+                // Each unstash restores target/cucumber-reports/ from its
+                // parallel workspace. We archive immediately after each
+                // unstash so reports are not overwritten by the next one.
                 unstash 'cucumber-part1'
                 archiveArtifacts(
                     artifacts: 'selenium-tests/target/cucumber-reports/**',
@@ -177,8 +191,8 @@ pipeline {
                     allowEmptyArchive: true
                 )
 
-                // NOTE: To get a rendered Cucumber UI report in Jenkins,
-                // install the "Cucumber Reports" plugin and add:
+                // To get a rendered Cucumber UI graph in Jenkins, install the
+                // "Cucumber Reports" plugin and replace archiveArtifacts with:
                 //   cucumber fileIncludePattern: 'selenium-tests/target/cucumber-reports/cucumber.json',
                 //            reportTitle: 'EventHub BDD Report',
                 //            buildStatus: 'UNSTABLE'
@@ -192,13 +206,13 @@ pipeline {
     // ──────────────────────────────────────────────────────────
     post {
         failure {
-            echo "Pipeline FAILED — check archived screenshots and the Cucumber report for details."
+            echo "Pipeline FAILED — pipeline error (not test failure). Check the logs."
         }
         unstable {
-            echo "Pipeline UNSTABLE — one or more Cucumber scenarios failed."
+            echo "Pipeline UNSTABLE — one or more Cucumber scenarios failed. Check archived screenshots and reports."
         }
         success {
-            echo "All 4 parts passed. Cucumber reports archived."
+            echo "All 4 parts PASSED. Cucumber reports archived."
         }
     }
 
