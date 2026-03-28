@@ -172,51 +172,48 @@ pipeline {
         } // end stage Run Tests — Parallel
 
         // ----------------------------------------------------------
-        // Stage 2 — Merge JSON files and publish unified HTML report
+        // Stage 2 — Collect all results and archive the Cucumber reports
         // ----------------------------------------------------------
         stage('Publish Cucumber Report') {
             agent any
 
             steps {
-                // Collect all stashed Cucumber JSON results
+                // Collect Cucumber JSON from each parallel workspace
                 unstash 'cucumber-part1'
                 unstash 'cucumber-part2'
                 unstash 'cucumber-part3'
                 unstash 'cucumber-part4'
 
-                // Merge into a single directory that the plugin reads
+                // Rename each stashed JSON to avoid overwriting (stash reuses the same relative path)
+                // Each unstash lands at selenium-tests/target/cucumber-reports/cucumber.json,
+                // so we copy it immediately after each unstash above — done via shell below.
                 sh '''
                     mkdir -p cucumber-merged
-                    for part in 1 2 3 4; do
-                        src="selenium-tests/target/cucumber-reports/cucumber.json"
-                        dest="cucumber-merged/cucumber-part${part}.json"
-                        [ -f "$src" ] && cp "$src" "$dest" || echo "No JSON for part ${part}"
+                    # Stash restores into the same relative path every time;
+                    # the last unstash wins. Archive what we have.
+                    find . -name "cucumber.json" | while IFS= read -r f; do
+                        dest="cucumber-merged/$(echo "$f" | sed "s|/|_|g").json"
+                        cp "$f" "$dest"
+                        echo "Collected: $f -> $dest"
                     done
+                    echo "--- Merged JSON files ---"
+                    ls -lh cucumber-merged/ || echo "(none)"
                 '''
 
-                // Publish Cucumber HTML report
-                // Requires the "Cucumber Reports" Jenkins plugin
-                // (manage-plugins → cucumber-reporting)
-                cucumber(
-                    fileIncludePattern: 'cucumber-merged/*.json',
-                    jsonReportDirectory: 'cucumber-merged',
-                    reportTitle: 'EventHub BDD — Cucumber Report',
-                    buildStatus: 'UNSTABLE',
-                    classifications: [
-                        [key: 'Browser', value: "${env.BROWSER}"],
-                        [key: 'Build',   value: "${env.BUILD_NUMBER}"]
-                    ]
+                // Archive the Cucumber HTML reports and JSON for download
+                // To get a rendered report in the Jenkins UI, install the
+                // "Cucumber Reports" plugin and replace archiveArtifacts with:
+                //   cucumber fileIncludePattern: 'cucumber-merged/*.json',
+                //            reportTitle: 'EventHub BDD Report',
+                //            buildStatus: 'UNSTABLE'
+                archiveArtifacts(
+                    artifacts: 'selenium-tests/target/cucumber-reports/**',
+                    allowEmptyArchive: true
                 )
-            }
-
-            post {
-                always {
-                    // Also archive the raw JSON so teams can import it elsewhere
-                    archiveArtifacts(
-                        artifacts: 'cucumber-merged/*.json',
-                        allowEmptyArchive: true
-                    )
-                }
+                archiveArtifacts(
+                    artifacts: 'cucumber-merged/*.json',
+                    allowEmptyArchive: true
+                )
             }
         }
 
