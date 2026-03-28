@@ -9,13 +9,13 @@ Feature: Booking Management
     And all existing bookings are cleared
     And the user books the first available event
 
-  @smoke @regression
+  @part1 @smoke @regression
   Scenario: Booking appears in the bookings list after confirmation
     When the user views their bookings
     Then at least one booking should be listed
     And the booking should show a confirmed status
 
-  @regression
+  @part2 @regression
   Scenario: Event and customer information appear on the booking page
     When the user views their bookings
     And the user opens their booking
@@ -23,7 +23,7 @@ Feature: Booking Management
     And the booked event details should be shown
     And the customer information should be shown
 
-  @regression
+  @part3 @regression
   Scenario: Payment information appears on the booking page
     When the user views their bookings
     And the user opens their booking
@@ -31,7 +31,7 @@ Feature: Booking Management
     And the total amount paid should be displayed
     And the option to check refund eligibility should be available
 
-  @regression
+  @part4 @regression
   Scenario: Cancelling a booking removes it from the list
     When the user views their bookings
     And the user opens their booking

@@ -1,0 +1,45 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<!--
+  Jenkins Pipeline job configuration for eventhub_selenium_bdd.
+  Creates (or reconfigures) a Pipeline job that:
+    - Clones the GitHub repo
+    - Uses Jenkinsfile at the repo root
+    - Runs 4 parallel Cucumber stages
+
+  To CREATE the job:
+    curl -X POST "http://admin:admin@localhost:8080/createItem?name=eventhub_selenium_bdd" \
+         --header "Content-Type: application/xml" \
+         --data-binary @jenkins-pipeline-job.xml
+
+  To UPDATE an existing job:
+    curl -X POST "http://admin:admin@localhost:8080/job/eventhub_selenium_bdd/config.xml" \
+         --header "Content-Type: application/xml" \
+         --data-binary @jenkins-pipeline-job.xml
+-->
+<flow-definition plugin="workflow-job">
+  <description>EventHub Selenium BDD — 4-way parallel Cucumber pipeline with screenshot-on-failure</description>
+  <keepDependencies>false</keepDependencies>
+  <properties/>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition" plugin="workflow-cps">
+    <scm class="hudson.plugins.git.GitSCM" plugin="git">
+      <configVersion>2</configVersion>
+      <userRemoteConfigs>
+        <hudson.plugins.git.UserRemoteConfig>
+          <url>https://github.com/samirjagtap4030/eventhub_selenium_bdd.git</url>
+        </hudson.plugins.git.UserRemoteConfig>
+      </userRemoteConfigs>
+      <branches>
+        <hudson.plugins.git.BranchSpec>
+          <name>*/main</name>
+        </hudson.plugins.git.BranchSpec>
+      </branches>
+      <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+      <submoduleCfg class="empty-list"/>
+      <extensions/>
+    </scm>
+    <scriptPath>Jenkinsfile</scriptPath>
+    <lightweight>true</lightweight>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>
