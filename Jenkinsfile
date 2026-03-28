@@ -1,11 +1,11 @@
 // ============================================================
-// EventHub Selenium BDD — Jenkins Declarative Pipeline
+// EventHub Selenium BDD — Jenkins Declarative Pipeline (Windows)
 //
 // Runs the Cucumber suite in 4 parallel parts (one scenario each).
 // Each part runs in its own agent workspace to avoid file conflicts.
 // Screenshots are captured on failure by CucumberHooks and saved
 // under target/screenshots/ for Jenkins artifact archiving.
-// A merged Cucumber HTML report is published at the end.
+// Cucumber HTML + JSON reports are archived at the end.
 // ============================================================
 
 pipeline {
@@ -22,8 +22,7 @@ pipeline {
     }
 
     environment {
-        MAVEN_OPTS = '-Xmx512m -Xms256m'
-        BROWSER    = 'chrome'
+        BROWSER = 'chrome'
     }
 
     // ──────────────────────────────────────────────────────────
@@ -43,28 +42,19 @@ pipeline {
                     steps {
                         checkout scm
                         dir('selenium-tests') {
-                            sh '''
-                                mvn test \
-                                  -Dsurefire.suiteXmlFiles=testng-bdd.xml \
-                                  -Dcucumber.filter.tags="@part1" \
-                                  -Dbrowser=${BROWSER} \
-                                  ${MAVEN_OPTS:+-Xmx512m} \
-                                  --no-transfer-progress
-                            '''
+                            bat "mvn test -Dsurefire.suiteXmlFiles=testng-bdd.xml -Dcucumber.filter.tags=@part1 -Dbrowser=${env.BROWSER} --no-transfer-progress"
                         }
                     }
                     post {
                         always {
                             dir('selenium-tests') {
-                                // Archive screenshots captured on failure
                                 archiveArtifacts(
                                     artifacts: 'target/screenshots/**/*.png',
                                     allowEmptyArchive: true
                                 )
-                                // Stash Cucumber JSON for report merging
                                 stash(
                                     name: 'cucumber-part1',
-                                    includes: 'target/cucumber-reports/cucumber.json',
+                                    includes: 'target/cucumber-reports/**',
                                     allowEmpty: true
                                 )
                             }
@@ -78,13 +68,7 @@ pipeline {
                     steps {
                         checkout scm
                         dir('selenium-tests') {
-                            sh '''
-                                mvn test \
-                                  -Dsurefire.suiteXmlFiles=testng-bdd.xml \
-                                  -Dcucumber.filter.tags="@part2" \
-                                  -Dbrowser=${BROWSER} \
-                                  --no-transfer-progress
-                            '''
+                            bat "mvn test -Dsurefire.suiteXmlFiles=testng-bdd.xml -Dcucumber.filter.tags=@part2 -Dbrowser=${env.BROWSER} --no-transfer-progress"
                         }
                     }
                     post {
@@ -96,7 +80,7 @@ pipeline {
                                 )
                                 stash(
                                     name: 'cucumber-part2',
-                                    includes: 'target/cucumber-reports/cucumber.json',
+                                    includes: 'target/cucumber-reports/**',
                                     allowEmpty: true
                                 )
                             }
@@ -110,13 +94,7 @@ pipeline {
                     steps {
                         checkout scm
                         dir('selenium-tests') {
-                            sh '''
-                                mvn test \
-                                  -Dsurefire.suiteXmlFiles=testng-bdd.xml \
-                                  -Dcucumber.filter.tags="@part3" \
-                                  -Dbrowser=${BROWSER} \
-                                  --no-transfer-progress
-                            '''
+                            bat "mvn test -Dsurefire.suiteXmlFiles=testng-bdd.xml -Dcucumber.filter.tags=@part3 -Dbrowser=${env.BROWSER} --no-transfer-progress"
                         }
                     }
                     post {
@@ -128,7 +106,7 @@ pipeline {
                                 )
                                 stash(
                                     name: 'cucumber-part3',
-                                    includes: 'target/cucumber-reports/cucumber.json',
+                                    includes: 'target/cucumber-reports/**',
                                     allowEmpty: true
                                 )
                             }
@@ -142,13 +120,7 @@ pipeline {
                     steps {
                         checkout scm
                         dir('selenium-tests') {
-                            sh '''
-                                mvn test \
-                                  -Dsurefire.suiteXmlFiles=testng-bdd.xml \
-                                  -Dcucumber.filter.tags="@part4" \
-                                  -Dbrowser=${BROWSER} \
-                                  --no-transfer-progress
-                            '''
+                            bat "mvn test -Dsurefire.suiteXmlFiles=testng-bdd.xml -Dcucumber.filter.tags=@part4 -Dbrowser=${env.BROWSER} --no-transfer-progress"
                         }
                     }
                     post {
@@ -160,7 +132,7 @@ pipeline {
                                 )
                                 stash(
                                     name: 'cucumber-part4',
-                                    includes: 'target/cucumber-reports/cucumber.json',
+                                    includes: 'target/cucumber-reports/**',
                                     allowEmpty: true
                                 )
                             }
@@ -172,48 +144,44 @@ pipeline {
         } // end stage Run Tests — Parallel
 
         // ----------------------------------------------------------
-        // Stage 2 — Collect all results and archive the Cucumber reports
+        // Stage 2 — Collect results and archive the Cucumber reports
         // ----------------------------------------------------------
         stage('Publish Cucumber Report') {
             agent any
 
             steps {
-                // Collect Cucumber JSON from each parallel workspace
+                // Unstash reports from all 4 parallel workspaces.
+                // Each lands at selenium-tests/target/cucumber-reports/;
+                // the last one wins, so we archive after every unstash.
                 unstash 'cucumber-part1'
-                unstash 'cucumber-part2'
-                unstash 'cucumber-part3'
-                unstash 'cucumber-part4'
-
-                // Rename each stashed JSON to avoid overwriting (stash reuses the same relative path)
-                // Each unstash lands at selenium-tests/target/cucumber-reports/cucumber.json,
-                // so we copy it immediately after each unstash above — done via shell below.
-                sh '''
-                    mkdir -p cucumber-merged
-                    # Stash restores into the same relative path every time;
-                    # the last unstash wins. Archive what we have.
-                    find . -name "cucumber.json" | while IFS= read -r f; do
-                        dest="cucumber-merged/$(echo "$f" | sed "s|/|_|g").json"
-                        cp "$f" "$dest"
-                        echo "Collected: $f -> $dest"
-                    done
-                    echo "--- Merged JSON files ---"
-                    ls -lh cucumber-merged/ || echo "(none)"
-                '''
-
-                // Archive the Cucumber HTML reports and JSON for download
-                // To get a rendered report in the Jenkins UI, install the
-                // "Cucumber Reports" plugin and replace archiveArtifacts with:
-                //   cucumber fileIncludePattern: 'cucumber-merged/*.json',
-                //            reportTitle: 'EventHub BDD Report',
-                //            buildStatus: 'UNSTABLE'
                 archiveArtifacts(
                     artifacts: 'selenium-tests/target/cucumber-reports/**',
                     allowEmptyArchive: true
                 )
+
+                unstash 'cucumber-part2'
                 archiveArtifacts(
-                    artifacts: 'cucumber-merged/*.json',
+                    artifacts: 'selenium-tests/target/cucumber-reports/**',
                     allowEmptyArchive: true
                 )
+
+                unstash 'cucumber-part3'
+                archiveArtifacts(
+                    artifacts: 'selenium-tests/target/cucumber-reports/**',
+                    allowEmptyArchive: true
+                )
+
+                unstash 'cucumber-part4'
+                archiveArtifacts(
+                    artifacts: 'selenium-tests/target/cucumber-reports/**',
+                    allowEmptyArchive: true
+                )
+
+                // NOTE: To get a rendered Cucumber UI report in Jenkins,
+                // install the "Cucumber Reports" plugin and add:
+                //   cucumber fileIncludePattern: 'selenium-tests/target/cucumber-reports/cucumber.json',
+                //            reportTitle: 'EventHub BDD Report',
+                //            buildStatus: 'UNSTABLE'
             }
         }
 
@@ -230,7 +198,7 @@ pipeline {
             echo "Pipeline UNSTABLE — one or more Cucumber scenarios failed."
         }
         success {
-            echo "All 4 parts passed. Cucumber report published."
+            echo "All 4 parts passed. Cucumber reports archived."
         }
     }
 
