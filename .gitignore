@@ -25,3 +25,13 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Playwright generated output
+playwright-report/
+test-results/
+
+# Maven build output
+selenium-tests/target/
+
+# Claude Code local settings (personal overrides, not shared)
+.claude/settings.local.json

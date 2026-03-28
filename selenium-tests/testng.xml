@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+
+<!--
+  ════════════════════════════════════════════════════════════════════
+  EventHub E2E Test Suite
+  ════════════════════════════════════════════════════════════════════
+
+  GROUPS
+  ──────
+  smoke      → TC-001 only  (fastest check, run on every PR)
+  regression → TC-001 + TC-002 + TC-003  (full suite, run nightly)
+
+  To run smoke only, change the <include name="regression"/> line to
+  <include name="smoke"/>.
+
+  PARALLEL EXECUTION
+  ──────────────────
+  DriverManager uses ThreadLocal<WebDriver> so each thread holds its
+  own isolated browser session — the framework is parallel-ready.
+
+  These three tests share a single test account, so running them with
+  parallel="methods" causes @BeforeMethod clearAllBookings() calls to
+  race against each other and delete each other's bookings.
+
+  ✅ Safe to enable parallel="methods" when:
+     · Each test class uses a dedicated test account, OR
+     · You add a second test account to config.properties and rotate
+       accounts via a ThreadLocal account provider.
+
+  To enable parallel once accounts are isolated:
+      parallel="methods" thread-count="3"
+  ════════════════════════════════════════════════════════════════════
+-->
+<suite name="EventHub E2E Suite" verbose="2" preserve-order="true" parallel="none">
+
+    <!-- Extent Report listener — fires in Maven, IDE, and CI without code changes -->
+    <listeners>
+        <listener class-name="com.eventhub.listeners.ExtentReportListener"/>
+    </listeners>
+
+    <!-- ── Regression suite — all critical happy paths ───────────────────── -->
+    <test name="Booking Management — Regression">
+        <parameter name="browser" value="chrome"/>
+        <!--
+          Switch to <include name="smoke"/> to run only TC-001 in a PR gate.
+          Switch to <include name="regression"/> to run the full suite.
+        -->
+        <groups>
+            <run>
+                <include name="regression"/>
+            </run>
+        </groups>
+        <classes>
+            <class name="com.eventhub.tests.BookingManagementTest"/>
+        </classes>
+    </test>
+
+</suite>

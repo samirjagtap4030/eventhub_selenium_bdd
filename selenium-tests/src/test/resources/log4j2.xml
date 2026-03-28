@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+
+    <Appenders>
+
+        <!-- Console — picked up by CI log aggregators (GitHub Actions, Jenkins) -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %-35c{1} - %msg%n"/>
+        </Console>
+
+        <!-- Rolling file — one file per test run, archived by date -->
+        <RollingFile name="File"
+                     fileName="target/logs/test-run.log"
+                     filePattern="target/logs/test-run-%d{yyyy-MM-dd-HH-mm}.log">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%-15t] %-5level %c{1} - %msg%n"/>
+            <Policies>
+                <!-- Start a fresh file on each Maven/JVM startup -->
+                <OnStartupTriggeringPolicy/>
+            </Policies>
+        </RollingFile>
+
+    </Appenders>
+
+    <Loggers>
+        <!-- Suppress noisy Selenium / WebDriverManager INFO noise -->
+        <Logger name="org.openqa.selenium"      level="warn" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+        <Logger name="io.github.bonigarcia"     level="warn" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+
+        <!-- All framework and test classes at INFO → Console + File -->
+        <Root level="info">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="File"/>
+        </Root>
+    </Loggers>
+
+</Configuration>

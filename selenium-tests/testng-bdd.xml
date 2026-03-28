@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+
+<!--
+  BDD suite — runs Cucumber scenarios via CucumberRunner.
+  Execute with:
+    mvn test -Dsurefire.suiteXmlFiles=testng-bdd.xml
+
+  To run only smoke scenarios (TC-001):
+    mvn test -Dsurefire.suiteXmlFiles=testng-bdd.xml -Dcucumber.filter.tags="@smoke"
+
+  To target a different browser:
+    mvn test -Dsurefire.suiteXmlFiles=testng-bdd.xml -Dbrowser=firefox
+-->
+<suite name="EventHub BDD Suite" verbose="2" preserve-order="true" parallel="none">
+
+    <listeners>
+        <listener class-name="com.eventhub.listeners.ExtentReportListener"/>
+    </listeners>
+
+    <test name="Booking Management BDD">
+        <parameter name="browser" value="chrome"/>
+        <classes>
+            <class name="com.eventhub.bdd.runner.CucumberRunner"/>
+        </classes>
+    </test>
+
+</suite>
