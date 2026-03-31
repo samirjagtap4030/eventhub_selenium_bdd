@@ -201,7 +201,7 @@ Tests the complete booking management lifecycle for a registered user including 
 
 ### Prerequisites — Install First
 
-- Java 11+
+- Java 21+
 - Apache Maven 3.6+
 - Google Chrome (latest stable)
 - Git
