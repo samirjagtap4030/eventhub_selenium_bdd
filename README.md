@@ -17,7 +17,7 @@ The project combines two test layers:
 | Local Frontend | `http://localhost:3000` |
 | Local Backend API | `http://localhost:3001` |
 | Swagger UI | `http://localhost:3001/api-docs` |
-| Test Account | `rahulshetty1@gmail.com` / `Magiclife1!` |
+| Test Account | `samirjagtap4030@gmail.com` / `12345678SJ#` |
 
 ---
 
